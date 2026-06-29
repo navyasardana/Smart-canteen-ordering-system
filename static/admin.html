@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NSUT Nescafe — Admin</title>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <style>
+    body { background: #f1f3f6; }
+    .admin-page { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 4rem; display: flex; flex-direction: column; gap: 1.8rem; }
+  </style>
+</head>
+<body>
+
+<!-- ── Admin Header ── -->
+<header class="admin-header">
+  <div class="header-brand">
+    <div class="logo">⚙️</div>
+    <div class="brand-text">
+      <div class="brand-name">Admin Dashboard</div>
+      <div class="brand-sub">NSUT Nescafe Canteen</div>
+    </div>
+  </div>
+  <a href="/" class="nav-link" style="color:#9ca3af;border-color:#374151">← Student View</a>
+</header>
+
+<div class="admin-page">
+
+  <!-- ── 1. Overview Stats ── -->
+  <section>
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-label">Total Orders</div><div class="stat-value" id="stat-orders">—</div></div>
+      <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Est. Revenue</div><div class="stat-value" id="stat-revenue">—</div></div>
+      <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-label">Busiest Slot</div><div class="stat-value" id="stat-slot" style="font-size:1.2rem">—</div></div>
+      <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-label">Top Item</div><div class="stat-value" id="stat-item" style="font-size:1rem;margin-top:0.4rem">—</div></div>
+    </div>
+  </section>
+
+  <!-- ── 2. Slot Management ── -->
+  <section>
+    <div class="section-header" style="margin-bottom:0.8rem">
+      <div class="section-title">🕐 Slot Management</div>
+      <button class="btn btn-ghost btn-sm" onclick="loadSlots();loadSlotOrders()">↻ Refresh</button>
+    </div>
+    <div class="admin-slots-grid" id="adminSlotsGrid"></div>
+  </section>
+
+  <!-- ── 3. Orders Table ── -->
+  <section>
+    <div class="section-header" style="margin-bottom:0.8rem">
+      <div class="section-title">📋 All Orders</div>
+    </div>
+    <div class="card">
+      <div class="orders-filter-bar">
+        <select id="filterSlot" onchange="renderOrdersTable()">
+          <option value="">All Slots</option>
+          <option value="1">10:45</option>
+          <option value="2">11:00</option>
+          <option value="3">11:15</option>
+          <option value="4">11:30</option>
+        </select>
+        <select id="filterStatus" onchange="renderOrdersTable()">
+          <option value="">All Statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="Being Prepared">Being Prepared</option>
+          <option value="Ready for Pickup">Ready for Pickup</option>
+          <option value="Collected">Collected</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th><th>ID</th><th>Items</th><th>Qty</th>
+              <th>Slot</th><th>Queue</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody">
+            <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 4. Peak Hour Chart ── -->
+  <section>
+    <div class="section-header" style="margin-bottom:0.8rem">
+      <div class="section-title">📊 Orders by Slot</div>
+    </div>
+    <div class="card">
+      <div class="bar-chart" id="barChart"></div>
+    </div>
+  </section>
+
+  <!-- ── 5. Menu Management ── -->
+  <section>
+    <div class="section-header" style="margin-bottom:0.8rem">
+      <div class="section-title">🍽️ Menu Availability</div>
+      <span style="font-size:0.78rem;color:var(--muted)">Toggle to show/hide from student menu</span>
+    </div>
+    <div class="card">
+      <div class="tabs" id="menuMgmtTabs" style="margin-bottom:1rem"></div>
+      <div class="menu-mgmt-grid" id="menuMgmtGrid"></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════
+let allOrders = [];
+let allSlots  = [];
+let fullMenu  = [];
+
+const CATEGORIES = ["Maggi","Pasta","Sandwiches","Hot Drinks","Ice Teas","Bakery"];
+
+const BADGE = {
+  "Pending":         "badge-pending",
+  "Being Prepared":  "badge-preparing",
+  "Ready for Pickup":"badge-ready",
+  "Collected":       "badge-collected",
+};
+
+// ═══════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════
+async function init() {
+  await Promise.all([loadOverview(), loadSlots(), loadOrders(), loadMenu()]);
+  await loadSlotOrders();
+}
+
+// ═══════════════════════════════════════════
+// Overview
+// ═══════════════════════════════════════════
+async function loadOverview() {
+  const res  = await fetch("/admin/overview");
+  const data = await res.json();
+  document.getElementById("stat-orders").textContent  = data.total_orders;
+  document.getElementById("stat-revenue").textContent = `₹${data.estimated_revenue}`;
+  document.getElementById("stat-slot").textContent    = data.busiest_slot;
+  document.getElementById("stat-item").textContent    = data.top_item;
+  renderBarChart(data.orders_per_slot);
+}
+
+function renderBarChart(perSlot) {
+  const chart  = document.getElementById("barChart");
+  const max    = Math.max(...perSlot.map(s => s.count), 1);
+  const allSlotTimes = ["10:45","11:00","11:15","11:30"];
+
+  chart.innerHTML = allSlotTimes.map(time => {
+    const s   = perSlot.find(x => x.slot === time) || { count: 0 };
+    const pct = Math.round((s.count / max) * 80);
+    return `
+    <div class="bar-col">
+      <div class="bar-count">${s.count}</div>
+      <div class="bar-fill" style="height:${pct}px"></div>
+      <div class="bar-label">${time}</div>
+    </div>`;
+  }).join("");
+}
+
+// ═══════════════════════════════════════════
+// Slots
+// ═══════════════════════════════════════════
+async function loadSlots() {
+  const res = await fetch("/slots");
+  const d   = await res.json();
+  allSlots  = d.slots;
+}
+
+async function loadSlotOrders() {
+  const grid = document.getElementById("adminSlotsGrid");
+  grid.innerHTML = "";
+
+  for (const slot of allSlots) {
+    const res    = await fetch(`/orders/${slot.slot_id}`);
+    const d      = await res.json();
+    const orders = d.orders;
+
+    const orderRows = orders.length
+      ? orders.map(o => `
+        <div class="slot-order-row">
+          <span class="sor-name">${o.student_name || "—"}</span>
+          <span class="sor-items">${(o.items||[]).join(", ")}</span>
+          <span class="badge ${BADGE[o.status]||'badge-pending'}">${o.status||"Pending"}</span>
+          <div class="sor-actions">
+            ${o.status === "Pending"
+              ? `<button class="btn btn-blue btn-sm" onclick="updateStatus('${o.order_id}','Being Prepared')">Prep</button>`
+              : ""}
+            ${o.status === "Being Prepared"
+              ? `<button class="btn btn-green btn-sm" onclick="updateStatus('${o.order_id}','Ready for Pickup')">Ready</button>`
+              : ""}
+            ${o.status === "Ready for Pickup"
+              ? `<button class="btn btn-ghost btn-sm" onclick="updateStatus('${o.order_id}','Collected')">Done</button>`
+              : ""}
+          </div>
+        </div>`).join("")
+      : `<p style="color:var(--muted);font-size:0.82rem;padding:0.5rem 0">No orders yet.</p>`;
+
+    const waitRes  = await fetch("/slots/waittime");
+    const waitData = await waitRes.json();
+    const slotWait = waitData.slots.find(s => s.slot_id === slot.slot_id);
+
+    grid.innerHTML += `
+    <div class="admin-slot-card ${slot.closed?'closed':''}" id="asc-${slot.slot_id}">
+      <div class="slot-card-head">
+        <div>
+          <div class="slot-name">${slot.time}</div>
+          <div class="slot-count">${slot.booked}/${slot.capacity} booked · ~${slotWait?.estimated_wait_mins||5} min wait</div>
+        </div>
+        <span class="badge ${slot.closed?'badge-pending':'badge-ready'}">${slot.closed?"Closed":"Open"}</span>
+      </div>
+      <div class="slot-card-orders">${orderRows}</div>
+      <div class="slot-card-footer">
+        <label>Wait (min):</label>
+        <input type="number" id="wt-${slot.slot_id}" value="${slot.wait_time||5}" min="1" max="60" style="width:56px"/>
+        <button class="btn btn-ghost btn-sm" onclick="saveWaitTime(${slot.slot_id})">Save</button>
+        <button class="btn btn-sm ${slot.closed?'btn-green':'btn-amber'}" style="margin-left:auto"
+          onclick="toggleSlot(${slot.slot_id},${!slot.closed})">
+          ${slot.closed?"Open Slot":"Close Slot"}
+        </button>
+      </div>
+    </div>`;
+  }
+}
+
+async function saveWaitTime(slotId) {
+  const val = parseInt(document.getElementById(`wt-${slotId}`).value);
+  await fetch(`/slot/${slotId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ wait_time: val }),
+  });
+  loadSlots().then(loadSlotOrders);
+}
+
+async function toggleSlot(slotId, closed) {
+  await fetch(`/slot/${slotId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ closed }),
+  });
+  await loadSlots();
+  loadSlotOrders();
+}
+
+// ═══════════════════════════════════════════
+// Orders table
+// ═══════════════════════════════════════════
+async function loadOrders() {
+  const res = await fetch("/orders");
+  const d   = await res.json();
+  allOrders = d.orders;
+  renderOrdersTable();
+}
+
+function renderOrdersTable() {
+  const slotFilter   = document.getElementById("filterSlot").value;
+  const statusFilter = document.getElementById("filterStatus").value;
+
+  let orders = allOrders;
+  if (slotFilter)   orders = orders.filter(o => String(o.slot_id) === slotFilter);
+  if (statusFilter) orders = orders.filter(o => (o.status||"Pending") === statusFilter);
+
+  const tbody = document.getElementById("ordersBody");
+  if (!orders.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">No orders match this filter.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = orders.map(o => {
+    const status  = o.status || "Pending";
+    const orderId = o.order_id || "";
+    const actions = orderId ? `
+      ${status === "Pending"
+        ? `<button class="btn btn-blue btn-sm" onclick="updateStatus('${orderId}','Being Prepared')">Prep</button>`
+        : ""}
+      ${status === "Being Prepared"
+        ? `<button class="btn btn-green btn-sm" onclick="updateStatus('${orderId}','Ready for Pickup')">Ready</button>`
+        : ""}
+      ${status === "Ready for Pickup"
+        ? `<button class="btn btn-ghost btn-sm" onclick="updateStatus('${orderId}','Collected')">Done</button>`
+        : ""}` : "—";
+
+    return `
+    <tr>
+      <td style="font-weight:700">${o.student_name||"—"}</td>
+      <td style="color:var(--muted)">${o.student_id||"—"}</td>
+      <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(o.items||[]).join(", ")}</td>
+      <td>${o.quantity||1}</td>
+      <td>${o.assigned_slot||"—"}</td>
+      <td>#${o.queue_position||"—"}</td>
+      <td><span class="badge ${BADGE[status]||'badge-pending'}">${status}</span></td>
+      <td style="white-space:nowrap">${actions}</td>
+    </tr>`;
+  }).join("");
+}
+
+async function updateStatus(orderId, status) {
+  if (!orderId) return;
+  const res = await fetch(`/order/${orderId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (res.ok) {
+    await loadOrders();
+    await loadSlots();
+    loadSlotOrders();
+    loadOverview();
+  } else {
+    alert("Failed to update status.");
+  }
+}
+
+// ═══════════════════════════════════════════
+// Menu management
+// ═══════════════════════════════════════════
+async function loadMenu() {
+  const res  = await fetch("/menu");
+  const data = await res.json();
+  fullMenu   = data.menu;
+  renderMenuMgmtTabs();
+  renderMenuMgmt(CATEGORIES[0]);
+}
+
+function renderMenuMgmtTabs() {
+  const tabs = document.getElementById("menuMgmtTabs");
+  tabs.innerHTML = CATEGORIES.map((cat, i) =>
+    `<div class="tab ${i===0?'active':''}" onclick="selectMenuTab(this,'${cat}')">${cat}</div>`
+  ).join("");
+}
+
+function selectMenuTab(el, cat) {
+  document.querySelectorAll("#menuMgmtTabs .tab").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+  renderMenuMgmt(cat);
+}
+
+function renderMenuMgmt(cat) {
+  const items = fullMenu.filter(i => i.category === cat);
+  const grid  = document.getElementById("menuMgmtGrid");
+  grid.innerHTML = items.map(item => `
+    <div class="menu-mgmt-item ${item.available?'':'unavailable'}" id="mmi-${item.item_id}">
+      <div class="mmi-info">
+        <div class="mmi-name">${item.name}</div>
+        <div class="mmi-price">₹${item.price}</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" ${item.available?'checked':''} onchange="toggleMenuItem('${item.item_id}')"/>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`).join("");
+}
+
+async function toggleMenuItem(itemId) {
+  const res  = await fetch(`/menu/${itemId}`, { method: "PATCH" });
+  const data = await res.json();
+  // Update local state
+  const idx = fullMenu.findIndex(i => i.item_id === itemId);
+  if (idx !== -1) fullMenu[idx].available = data.available;
+  const el = document.getElementById(`mmi-${itemId}`);
+  if (el) el.classList.toggle("unavailable", !data.available);
+}
+
+// ═══════════════════════════════════════════
+// Auto-refresh every 12 seconds
+// ═══════════════════════════════════════════
+init();
+setInterval(async () => {
+  await loadOrders();
+  await loadSlots();
+  loadSlotOrders();
+  loadOverview();
+}, 12000);
+</script>
+
+</body>
+</html>

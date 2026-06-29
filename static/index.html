@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NSUT Nescafe — Pre-Order</title>
+  <link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="header">
+  <div class="header-brand">
+    <div class="logo">☕</div>
+    <div class="brand-text">
+      <div class="brand-name">Nescafe NSUT</div>
+      <div class="brand-sub">Pre-Order System</div>
+    </div>
+  </div>
+  <a href="/admin" class="nav-link">Admin →</a>
+</header>
+
+<!-- ════════════════════════════════════════════════════
+     SCREEN 1 — Student ID gate
+════════════════════════════════════════════════════ -->
+<div id="screen-gate" class="page">
+  <div class="card">
+    <div class="id-gate">
+      <div class="gate-icon">🎓</div>
+      <h2>Welcome to Nescafe NSUT</h2>
+      <p>Enter your student ID to start ordering. We'll show your recent orders too.</p>
+      <div class="id-input-row">
+        <input id="gateInput" type="text" placeholder="e.g. 2024CS001" maxlength="20"/>
+        <button class="btn btn-primary" onclick="startSession()">Go →</button>
+      </div>
+      <p class="error-msg" id="gateError"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     SCREEN 2 — Menu + Cart + Slot
+════════════════════════════════════════════════════ -->
+<div id="screen-order" class="page hidden">
+
+  <!-- Greeting -->
+  <div class="flex items-center justify-between mb-2" style="margin-bottom:1rem">
+    <div>
+      <div style="font-size:0.78rem;color:var(--muted);">Ordering as</div>
+      <div style="font-weight:800;font-size:1.05rem;" id="greetingName">—</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="switchUser()">Change ID</button>
+  </div>
+
+  <!-- Order Again -->
+  <div id="reorderSection" class="section hidden">
+    <div class="section-header">
+      <div class="section-title">⚡ Order Again</div>
+    </div>
+    <div class="reorder-list" id="reorderList"></div>
+  </div>
+
+  <!-- Menu -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">🍽️ Menu</div>
+    </div>
+    <div class="tabs" id="categoryTabs"></div>
+    <div class="menu-grid" id="menuGrid" style="margin-top:0.8rem"></div>
+  </div>
+
+  <!-- Cart review + slot picker — shown when cart has items -->
+  <div id="checkoutSection" class="section hidden">
+
+    <!-- Cart summary -->
+    <div class="card">
+      <div class="card-title">Your Cart</div>
+      <div id="cartReview"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid var(--border)">
+        <span style="font-weight:800;font-size:1.1rem;" id="cartTotal">₹0</span>
+        <button class="btn btn-ghost btn-sm" onclick="clearCart()">Clear cart</button>
+      </div>
+    </div>
+
+    <!-- Name field -->
+    <div class="card">
+      <div class="card-title">Your Name</div>
+      <input id="studentName" type="text" placeholder="Full name (for pickup announcement)"/>
+    </div>
+
+    <!-- Slot picker -->
+    <div class="card">
+      <div class="card-title">Pick a Slot</div>
+      <div class="slot-grid" id="slotPicker"></div>
+    </div>
+
+    <button class="btn btn-primary btn-full" style="font-size:1rem;padding:0.9rem" onclick="placeOrder()">
+      Place Order →
+    </button>
+    <p class="error-msg hidden" id="orderError"></p>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     SCREEN 3 — Confirmation + Live Tracker
+════════════════════════════════════════════════════ -->
+<div id="screen-confirm" class="page hidden">
+  <div class="card">
+    <div class="confirm-screen">
+      <div class="confirm-icon">✅</div>
+      <h2>Order Confirmed!</h2>
+      <p style="color:var(--muted);font-size:0.9rem">Your order has been received. Watch it come to life below.</p>
+
+      <div class="confirm-details" id="confirmDetails"></div>
+
+      <!-- Progress tracker -->
+      <div style="width:100%;max-width:400px;margin-top:1rem">
+        <div class="card-title" style="text-align:left">Live Status</div>
+        <div class="tracker" id="orderTracker">
+          <div class="tracker-step" id="ts-pending">
+            <div class="tracker-dot">🕐</div>
+            <div class="tracker-label">Pending</div>
+          </div>
+          <div class="tracker-line" id="tl-1"></div>
+          <div class="tracker-step" id="ts-preparing">
+            <div class="tracker-dot">👨‍🍳</div>
+            <div class="tracker-label">Being Prepared</div>
+          </div>
+          <div class="tracker-line" id="tl-2"></div>
+          <div class="tracker-step" id="ts-ready">
+            <div class="tracker-dot">🛎️</div>
+            <div class="tracker-label">Ready for Pickup</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-outline mt-2" onclick="newOrder()">Order Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Floating cart bar ── -->
+<div class="cart-bar hidden" id="cartBar">
+  <div class="cart-bar-left">
+    <div class="cart-items-preview" id="cartBarPreview">—</div>
+    <div class="cart-total" id="cartBarTotal">₹0</div>
+  </div>
+  <button class="btn btn-primary" onclick="scrollToCheckout()">View Cart →</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════
+let studentId   = "";
+let studentName = "";
+let menu        = [];       // all menu items from API
+let cart        = {};       // { item_id: { item, qty } }
+let selectedSlotId = null;
+let trackerInterval = null;
+let currentOrderId  = null;
+
+const CATEGORIES = ["Maggi","Pasta","Sandwiches","Hot Drinks","Ice Teas","Bakery"];
+
+// ═══════════════════════════════════════════
+// Gate
+// ═══════════════════════════════════════════
+function startSession() {
+  const val = document.getElementById("gateInput").value.trim();
+  if (!val || !/^[a-zA-Z0-9]+$/.test(val)) {
+    document.getElementById("gateError").textContent = "Student ID must be alphanumeric.";
+    return;
+  }
+  studentId = val;
+  show("screen-order");
+  hide("screen-gate");
+  document.getElementById("greetingName").textContent = studentId;
+  loadMenu();
+  loadHistory();
+  loadSlotPicker();
+}
+
+function switchUser() {
+  studentId = ""; cart = {}; selectedSlotId = null;
+  hide("screen-order"); hide("screen-confirm");
+  show("screen-gate");
+  document.getElementById("gateInput").value = "";
+}
+
+// ═══════════════════════════════════════════
+// Menu
+// ═══════════════════════════════════════════
+async function loadMenu() {
+  const res  = await fetch("/menu");
+  const data = await res.json();
+  menu = data.menu.filter(i => i.available);
+  renderCategoryTabs();
+  renderMenuCategory(CATEGORIES[0]);
+}
+
+function renderCategoryTabs() {
+  const tabs = document.getElementById("categoryTabs");
+  tabs.innerHTML = CATEGORIES.map((cat, i) =>
+    `<div class="tab ${i===0?'active':''}" onclick="selectTab(this,'${cat}')">${catIcon(cat)} ${cat}</div>`
+  ).join("");
+}
+
+function selectTab(el, cat) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+  renderMenuCategory(cat);
+}
+
+function renderMenuCategory(cat) {
+  const items = menu.filter(i => i.category === cat);
+  const grid  = document.getElementById("menuGrid");
+  if (!items.length) { grid.innerHTML = `<p style="color:var(--muted);font-size:0.9rem">No items available right now.</p>`; return; }
+  grid.innerHTML = items.map(item => {
+    const qty = cart[item.item_id]?.qty || 0;
+    return `
+    <div class="menu-item" id="mi-${item.item_id}">
+      <div class="menu-item-name">${item.name}</div>
+      <div class="menu-item-cat">${item.category}</div>
+      <div class="menu-item-footer">
+        <div class="menu-item-price">₹${item.price}</div>
+        <div class="qty-control">
+          ${qty > 0
+            ? `<button class="qty-btn" onclick="changeQty('${item.item_id}',-1)">−</button>
+               <span class="qty-count">${qty}</span>`
+            : ''}
+          <button class="qty-btn" onclick="changeQty('${item.item_id}',1)">+</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function changeQty(itemId, delta) {
+  const item = menu.find(i => i.item_id === itemId);
+  if (!item) return;
+  const current = cart[itemId]?.qty || 0;
+  const next = current + delta;
+  if (next <= 0) delete cart[itemId];
+  else cart[itemId] = { item, qty: next };
+  refreshCartUI();
+  // re-render just the qty control for this item
+  const mi = document.getElementById(`mi-${itemId}`);
+  if (mi) {
+    const qty = cart[itemId]?.qty || 0;
+    mi.querySelector(".qty-control").innerHTML = `
+      ${qty > 0
+        ? `<button class="qty-btn" onclick="changeQty('${itemId}',-1)">−</button>
+           <span class="qty-count">${qty}</span>`
+        : ''}
+      <button class="qty-btn" onclick="changeQty('${itemId}',1)">+</button>`;
+  }
+}
+
+function refreshCartUI() {
+  const keys = Object.keys(cart);
+  const total = keys.reduce((s, k) => s + cart[k].item.price * cart[k].qty, 0);
+  const totalQty = keys.reduce((s, k) => s + cart[k].qty, 0);
+
+  // Checkout section
+  if (keys.length > 0) {
+    show("checkoutSection");
+    document.getElementById("cartReview").innerHTML = keys.map(k => `
+      <div style="display:flex;justify-content:space-between;padding:0.35rem 0;font-size:0.88rem;border-bottom:1px solid var(--border)">
+        <span>${cart[k].item.name} × ${cart[k].qty}</span>
+        <span style="font-weight:700">₹${cart[k].item.price * cart[k].qty}</span>
+      </div>`).join("");
+    document.getElementById("cartTotal").textContent = `₹${total}`;
+  } else {
+    hide("checkoutSection");
+  }
+
+  // Floating bar
+  const bar = document.getElementById("cartBar");
+  if (keys.length > 0) {
+    bar.classList.remove("hidden");
+    document.getElementById("cartBarPreview").textContent = `${totalQty} item${totalQty>1?'s':''}`;
+    document.getElementById("cartBarTotal").textContent   = `₹${total}`;
+  } else {
+    bar.classList.add("hidden");
+  }
+}
+
+function clearCart() {
+  cart = {};
+  refreshCartUI();
+  // re-render current tab
+  const activeTab = document.querySelector(".tab.active");
+  if (activeTab) renderMenuCategory(activeTab.textContent.replace(/^.\s/, "").trim());
+}
+
+function scrollToCheckout() {
+  document.getElementById("checkoutSection")?.scrollIntoView({ behavior: "smooth" });
+}
+
+// ═══════════════════════════════════════════
+// Order history
+// ═══════════════════════════════════════════
+async function loadHistory() {
+  const res  = await fetch(`/student/${studentId}/history`);
+  const data = await res.json();
+  if (!data.history.length) return;
+  show("reorderSection");
+  const list = document.getElementById("reorderList");
+  list.innerHTML = data.history.map(o => `
+    <div class="reorder-card" onclick="reorder(${JSON.stringify(o.items).replace(/"/g,"'")})">
+      <div class="rc-items">${o.items.join(", ")}</div>
+      <div class="rc-meta">${o.assigned_slot} · ₹${o.quantity * 45}</div>
+      <div class="rc-tag">↩ Order again</div>
+    </div>`).join("");
+}
+
+function reorder(items) {
+  // Fill cart from a past order (qty 1 each)
+  items.forEach(name => {
+    const found = menu.find(i => i.name === name);
+    if (found) cart[found.item_id] = { item: found, qty: 1 };
+  });
+  refreshCartUI();
+  // Switch to first tab and re-render
+  const firstTab = document.querySelector(".tab");
+  if (firstTab) { firstTab.click(); }
+  scrollToCheckout();
+}
+
+// ═══════════════════════════════════════════
+// Slot picker
+// ═══════════════════════════════════════════
+async function loadSlotPicker() {
+  const res  = await fetch("/slots/waittime");
+  const data = await res.json();
+  const picker = document.getElementById("slotPicker");
+  picker.innerHTML = data.slots.map(s => {
+    const pct  = Math.round((s.booked / s.capacity) * 100);
+    const full  = s.booked >= s.capacity;
+    const cls   = s.closed ? "slot-closed" : full ? "slot-full" : (selectedSlotId === s.slot_id ? "selected" : "");
+    const label = s.closed ? "Closed" : full ? "Full" : `${s.capacity - s.booked} left`;
+    return `
+    <div class="slot-option ${cls}" id="slot-opt-${s.slot_id}"
+         onclick="selectSlot(${s.slot_id},${s.closed||full})">
+      <div class="slot-time">${s.time}</div>
+      <div class="slot-avail">${label}</div>
+      ${!s.closed && !full ? `<div class="slot-wait">~${s.estimated_wait_mins} min wait</div>` : ""}
+      <div class="slot-fill-bar"><div class="slot-fill-bar-inner" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join("");
+}
+
+function selectSlot(id, unavailable) {
+  if (unavailable) return;
+  selectedSlotId = id;
+  document.querySelectorAll(".slot-option").forEach(el => el.classList.remove("selected"));
+  document.getElementById(`slot-opt-${id}`)?.classList.add("selected");
+}
+
+// ═══════════════════════════════════════════
+// Place order
+// ═══════════════════════════════════════════
+async function placeOrder() {
+  const name = document.getElementById("studentName").value.trim();
+  const errEl = document.getElementById("orderError");
+  errEl.classList.add("hidden");
+
+  if (!name)           return showErr(errEl, "Please enter your name.");
+  if (!Object.keys(cart).length) return showErr(errEl, "Your cart is empty.");
+  if (!selectedSlotId) return showErr(errEl, "Please select a pickup slot.");
+
+  const items = Object.values(cart).flatMap(c => Array(c.qty).fill(c.item.name));
+  const totalQty = Object.values(cart).reduce((s,c) => s + c.qty, 0);
+
+  const payload = {
+    student_name: name,
+    student_id:   studentId,
+    items,
+    quantity:     totalQty,
+    slot_id:      selectedSlotId,
+  };
+
+  const res  = await fetch("/order", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    const msg = Array.isArray(data.detail)
+      ? data.detail.map(d => d.msg).join(". ")
+      : data.detail;
+    return showErr(errEl, msg);
+  }
+
+  currentOrderId = data.order_id;
+  studentName    = name;
+  showConfirmation(data);
+}
+
+// ═══════════════════════════════════════════
+// Confirmation + tracker
+// ═══════════════════════════════════════════
+function showConfirmation(data) {
+  hide("screen-order");
+  hide("cartBar");
+  show("screen-confirm");
+
+  document.getElementById("confirmDetails").innerHTML = `
+    <div class="confirm-row"><span class="label">Name</span><span class="value">${data.student_name}</span></div>
+    <div class="confirm-row"><span class="label">Items</span><span class="value">${[...new Set(data.items)].join(", ")}</span></div>
+    <div class="confirm-row"><span class="label">Pickup Slot</span><span class="value">${data.assigned_slot}</span></div>
+    <div class="confirm-row"><span class="label">Queue Position</span><span class="value">#${data.queue_position}</span></div>
+    <div class="confirm-row"><span class="label">Est. Ready In</span><span class="value">~${data.estimated_mins} min</span></div>
+  `;
+
+  updateTracker("Pending");
+  if (trackerInterval) clearInterval(trackerInterval);
+  trackerInterval = setInterval(pollOrderStatus, 8000);
+}
+
+async function pollOrderStatus() {
+  if (!currentOrderId) return;
+  // We poll /orders and find our order — or a dedicated endpoint could be used
+  const res  = await fetch(`/orders`);
+  const data = await res.json();
+  const order = data.orders.find(o => o.order_id === currentOrderId);
+  if (order) updateTracker(order.status);
+  if (order?.status === "Collected") clearInterval(trackerInterval);
+}
+
+const STATUS_ORDER = ["Pending", "Being Prepared", "Ready for Pickup", "Collected"];
+
+function updateTracker(status) {
+  const idx = STATUS_ORDER.indexOf(status);
+
+  const steps = [
+    { id: "ts-pending",    threshold: 0 },
+    { id: "ts-preparing",  threshold: 1 },
+    { id: "ts-ready",      threshold: 2 },
+  ];
+  const lines = [
+    { id: "tl-1", threshold: 1 },
+    { id: "tl-2", threshold: 2 },
+  ];
+
+  steps.forEach(s => {
+    const el = document.getElementById(s.id);
+    if (!el) return;
+    el.classList.remove("done","active");
+    if (idx > s.threshold)      el.classList.add("done");
+    else if (idx === s.threshold) el.classList.add("active");
+  });
+  lines.forEach(l => {
+    const el = document.getElementById(l.id);
+    if (!el) return;
+    el.classList.toggle("done", idx >= l.threshold);
+  });
+}
+
+function newOrder() {
+  cart = {}; selectedSlotId = null; currentOrderId = null;
+  if (trackerInterval) clearInterval(trackerInterval);
+  hide("screen-confirm");
+  show("screen-order");
+  loadSlotPicker();
+  refreshCartUI();
+}
+
+// ═══════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════
+function show(id) { document.getElementById(id)?.classList.remove("hidden"); }
+function hide(id) { document.getElementById(id)?.classList.add("hidden");    }
+function showErr(el, msg) { el.textContent = msg; el.classList.remove("hidden"); }
+
+function catIcon(cat) {
+  return { Maggi:"🍜", Pasta:"🍝", Sandwiches:"🥪", "Hot Drinks":"☕", "Ice Teas":"🧊", Bakery:"🥐" }[cat] || "🍴";
+}
+
+// Refresh slot picker every 15 seconds on the order screen
+setInterval(() => { if (!document.getElementById("screen-order").classList.contains("hidden")) loadSlotPicker(); }, 15000);
+</script>
+
+</body>
+</html>
