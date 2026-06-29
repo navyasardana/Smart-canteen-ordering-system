@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from bson import ObjectId
 from datetime import datetime
 
-from database import orders_col, slots_col, menu_col, init_slots, init_menu
+from database import orders_col, slots_col, menu_col, init_slots, init_menu, ensure_slots_current
 from models import OrderRequest, StatusUpdate, SlotUpdate
 from scheduler import start_scheduler, stop_scheduler
 
@@ -64,6 +64,7 @@ def assign_slot_atomic(preferred_slot_id: int | None = None) -> dict | None:
 
 @app.post("/order")
 def place_order(order: OrderRequest):
+    ensure_slots_current()
     slot = assign_slot_atomic(order.slot_id)
     if not slot:
         raise HTTPException(status_code=409, detail="No slots available right now. Please try later.")
@@ -158,6 +159,7 @@ def get_queue(slot_id: int):
 
 @app.get("/slots")
 def get_slots():
+    ensure_slots_current()
     slots = list(slots_col.find({}, {"_id": 0}).sort("slot_id", 1))
     return {"slots": slots}
 
@@ -165,6 +167,7 @@ def get_slots():
 @app.get("/slots/waittime")
 def get_wait_times():
     """Return estimated wait time per slot based on pending order count."""
+    ensure_slots_current()
     slots = list(slots_col.find({}, {"_id": 0}).sort("slot_id", 1))
     result = []
     for slot in slots:

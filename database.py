@@ -86,6 +86,31 @@ def init_slots():
     ])
 
 
+def ensure_slots_current():
+    """
+    Keep slot times in sync with the real clock for long-running servers.
+    If the earliest slot's time has already passed, roll all slots forward
+    to fresh times starting from the next boundary (and reset booked counts,
+    since those time windows are gone). Cheap no-op when slots are still valid.
+    """
+    first = slots_col.find_one(sort=[("slot_id", 1)])
+    if not first:
+        init_slots()
+        return
+
+    now = datetime.now()
+    try:
+        h, m = map(int, first["time"].split(":"))
+    except (ValueError, KeyError):
+        init_slots()
+        return
+
+    slot_dt = now.replace(hour=h, minute=m, second=0, microsecond=0)
+    # If the first slot is more than one gap in the past, the window has moved on.
+    if slot_dt < now - timedelta(minutes=SLOT_GAP_MINUTES):
+        init_slots()
+
+
 def init_menu():
     if menu_col.count_documents({}) == 0:
         menu_col.insert_many(MENU_ITEMS)
