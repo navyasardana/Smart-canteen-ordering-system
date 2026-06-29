@@ -185,13 +185,15 @@ async function loadOverview() {
   renderBarChart(data.orders_per_slot);
 }
 
+let lastBarHTML = "";
 function renderBarChart(perSlot) {
   const chart  = document.getElementById("barChart");
   const max    = Math.max(...perSlot.map(s => s.count), 1);
-  const allSlotTimes = ["10:45","11:00","11:15","11:30"];
+  // Use the live slot times rather than hardcoded ones
+  const allSlotTimes = (allSlots.length ? allSlots.map(s => s.time) : ["10:45","11:00","11:15","11:30"]);
   const maxBarHeight = 120;
 
-  chart.innerHTML = allSlotTimes.map(time => {
+  const html = allSlotTimes.map(time => {
     const s   = perSlot.find(x => x.slot === time) || { count: 0 };
     const height = Math.max(Math.round((s.count / max) * maxBarHeight), s.count > 0 ? 12 : 6);
     return `
@@ -203,6 +205,8 @@ function renderBarChart(perSlot) {
       <div class="bar-label">${time}</div>
     </div>`;
   }).join("");
+
+  if (html !== lastBarHTML) { chart.innerHTML = html; lastBarHTML = html; }
 }
 
 // ═══════════════════════════════════════════
@@ -214,14 +218,21 @@ async function loadSlots() {
   allSlots  = d.slots;
 }
 
+let lastSlotOrdersHTML = "";
+
 async function loadSlotOrders() {
   const grid = document.getElementById("adminSlotsGrid");
-  grid.innerHTML = "";
 
-  for (const slot of allSlots) {
-    const res    = await fetch(`/orders/${slot.slot_id}`);
-    const d      = await res.json();
-    const orders = d.orders;
+  // Fetch wait times once + all slot orders in parallel (no sequential stalls)
+  const [waitData, ...slotOrderData] = await Promise.all([
+    fetch("/slots/waittime").then(r => r.json()),
+    ...allSlots.map(s => fetch(`/orders/${s.slot_id}`).then(r => r.json())),
+  ]);
+
+  let html = "";
+  allSlots.forEach((slot, idx) => {
+    const orders   = slotOrderData[idx].orders;
+    const slotWait = waitData.slots.find(s => s.slot_id === slot.slot_id);
 
     const orderRows = orders.length
       ? orders.map(o => `
@@ -243,12 +254,9 @@ async function loadSlotOrders() {
         </div>`).join("")
       : `<p style="color:var(--muted);font-size:0.82rem;padding:0.5rem 0.6rem">No orders yet.</p>`;
 
-    const waitRes  = await fetch("/slots/waittime");
-    const waitData = await waitRes.json();
-    const slotWait = waitData.slots.find(s => s.slot_id === slot.slot_id);
     const pct = Math.round((slot.booked / slot.capacity) * 100);
 
-    grid.innerHTML += `
+    html += `
     <div class="admin-slot-card ${slot.closed?'closed':''}" id="asc-${slot.slot_id}">
       <div class="slot-card-head">
         <div class="slot-card-head-left">
@@ -277,6 +285,13 @@ async function loadSlotOrders() {
         </button>
       </div>
     </div>`;
+  });
+
+  // Only repaint when something actually changed — avoids needless reflow
+  // and won't clobber a wait-time field the admin is mid-edit.
+  if (html !== lastSlotOrdersHTML) {
+    grid.innerHTML = html;
+    lastSlotOrdersHTML = html;
   }
 }
 
@@ -310,6 +325,7 @@ async function loadOrders() {
   renderOrdersTable();
 }
 
+let lastOrdersHTML = "";
 function renderOrdersTable() {
   const slotFilter   = document.getElementById("filterSlot").value;
   const statusFilter = document.getElementById("filterStatus").value;
@@ -320,11 +336,12 @@ function renderOrdersTable() {
 
   const tbody = document.getElementById("ordersBody");
   if (!orders.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">No orders match this filter.</td></tr>`;
+    const empty = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">No orders match this filter.</td></tr>`;
+    if (empty !== lastOrdersHTML) { tbody.innerHTML = empty; lastOrdersHTML = empty; }
     return;
   }
 
-  tbody.innerHTML = orders.map(o => {
+  const html = orders.map(o => {
     const status  = o.status || "Pending";
     const orderId = o.order_id || "";
     const actions = orderId ? `
@@ -350,6 +367,8 @@ function renderOrdersTable() {
       <td style="white-space:nowrap">${actions}</td>
     </tr>`;
   }).join("");
+
+  if (html !== lastOrdersHTML) { tbody.innerHTML = html; lastOrdersHTML = html; }
 }
 
 async function updateStatus(orderId, status) {

@@ -117,8 +117,8 @@
           <div class="checkmark-icon"></div>
         </div>
       </div>
-      <h2>Order Confirmed!</h2>
-      <p style="color:var(--muted);font-size:0.9rem">Your order has been received. Watch it come to life below.</p>
+      <h2 id="confirmTitle">Order Confirmed!</h2>
+      <p id="confirmSubtitle" style="color:var(--muted);font-size:0.9rem">Your order has been received. Watch it come to life below.</p>
 
       <div class="confirm-details" id="confirmDetails"></div>
 
@@ -253,19 +253,34 @@ function transitionTo(hideId, showId, cb) {
 // ═══════════════════════════════════════════
 // Gate
 // ═══════════════════════════════════════════
-function startSession() {
+async function startSession() {
   const val = document.getElementById("gateInput").value.trim();
   if (!val || !/^[a-zA-Z0-9]+$/.test(val)) {
     document.getElementById("gateError").textContent = "Student ID must be alphanumeric.";
     return;
   }
   studentId = val;
-  transitionTo("screen-gate", "screen-order", () => {
+
+  // Check for an order that's still in progress (not yet collected)
+  let active = null;
+  try {
+    const hist = (await (await fetch(`/student/${studentId}/history`)).json()).history || [];
+    active = hist.find(o => o.order_id && o.status && o.status !== "Collected");
+  } catch (_) {}
+
+  transitionTo("screen-gate", active ? "screen-confirm" : "screen-order", () => {
     document.getElementById("greetingName").textContent = studentId;
     document.getElementById("heroSection").classList.add("hero-compact");
+    // Prepare the order screen in the background (for "Order Again" / placing a new one)
     loadMenu();
     loadHistory();
     loadSlotPicker();
+
+    if (active) {
+      studentName = active.student_name;
+      closeCartPanel();
+      fillConfirm(active, { confetti: false, isNew: false });
+    }
   });
 }
 
@@ -312,31 +327,75 @@ function selectTab(el, cat) {
   renderMenuCategory(cat);
 }
 
+// Short editorial-style descriptions for an authentic menu feel
+const DESCRIPTIONS = {
+  "Maggi Classic": "The original 2-minute comfort, simmered just right",
+  "Cheese Maggi": "Classic Maggi folded through molten cheese",
+  "Oregano Maggi": "Herb-dusted with a Mediterranean lift",
+  "Masala Maggi": "Spiced up with our house masala blend",
+  "Double Masala Maggi": "For those who like it bold and fiery",
+  "Arrabiata Pasta": "Penne in a fiery tomato-garlic sauce",
+  "White Sauce Pasta": "Creamy béchamel with a hint of pepper",
+  "Pesto Pasta": "Fresh basil pesto, nutty and bright",
+  "Mac and Cheese": "Three-cheese baked indulgence",
+  "Veg Grilled Sandwich": "Garden vegetables, toasted golden",
+  "Cheese Sandwich": "Gooey, griddled and gloriously simple",
+  "Paneer Sandwich": "Spiced cottage cheese, grilled to order",
+  "Club Sandwich": "Triple-decker, stacked tall",
+  "Nescafe Classic": "The campus staple, hot and strong",
+  "Cappuccino": "Espresso crowned with velvet foam",
+  "Latte": "Smooth espresso, steamed milk, calm mornings",
+  "Cold Coffee": "Iced, blended, lightly sweet",
+  "Masala Chai": "Brewed with ginger, cardamom and time",
+  "Ginger Chai": "Sharp, warming, monsoon-ready",
+  "Green Tea": "Light, clean and quietly energising",
+  "Lemon Ice Tea": "Citrus-bright and thirst-quenching",
+  "Peach Ice Tea": "Soft summer peach over ice",
+  "Mango Ice Tea": "Alphonso sweetness, chilled",
+  "Passion Fruit Ice Tea": "Tangy, tropical, refreshing",
+  "Chocolate Brownie": "Dense, fudgy, deeply chocolatey",
+  "Cookies": "Crisp edges, chewy centre",
+  "Croissant": "Buttery, flaky, French-style",
+  "Vada Pav": "Mumbai's favourite in every bite",
+  "Samosa": "Golden, spiced potato parcel",
+  "Pastry": "A little slice of celebration",
+  "Muffin": "Soft-baked and freshly risen",
+  "Cake Slice": "Generous, moist and frosted",
+};
+
+function qtyControlHTML(itemId, qty) {
+  return `
+    ${qty > 0
+      ? `<button class="qty-btn" onclick="changeQty('${itemId}',-1,event)">−</button>
+         <span class="qty-count">${qty}</span>`
+      : ''}
+    <button class="qty-btn ${qty > 0 ? '' : 'qty-btn-add'}" onclick="changeQty('${itemId}',1,event)">+</button>`;
+}
+
 function renderMenuCategory(cat) {
   const items = menu.filter(i => i.category === cat);
   const grid  = document.getElementById("menuGrid");
   if (!items.length) { grid.innerHTML = `<p style="color:var(--muted);font-size:0.9rem">No items available right now.</p>`; return; }
-  grid.innerHTML = items.map((item, idx) => {
+
+  const rows = items.map((item, idx) => {
     const qty = cart[item.item_id]?.qty || 0;
     return `
-    <div class="menu-item" id="mi-${item.item_id}" style="animation-delay:${idx * 0.05}s">
-      <div class="menu-item-visual ${catClass(item.category)}"><span>${catIcon(item.category)}</span></div>
-      <div class="menu-item-body">
-        <div class="menu-item-name">${item.name}</div>
-        <div class="menu-item-cat">${item.category}</div>
-        <div class="menu-item-footer">
-          <div class="menu-item-price">₹${item.price}</div>
-          <div class="qty-control">
-            ${qty > 0
-              ? `<button class="qty-btn" onclick="changeQty('${item.item_id}',-1,event)">−</button>
-                 <span class="qty-count">${qty}</span>`
-              : ''}
-            <button class="qty-btn" onclick="changeQty('${item.item_id}',1,event)">+</button>
-          </div>
-        </div>
+    <div class="menu-item ${qty > 0 ? 'in-cart' : ''}" id="mi-${item.item_id}" style="animation-delay:${idx * 0.035}s">
+      <div class="mi-head">
+        <span class="menu-item-name">${item.name}</span>
+        <span class="mi-leader"></span>
+        <span class="menu-item-price">₹${item.price}</span>
+      </div>
+      <div class="mi-sub">
+        <span class="mi-desc">${DESCRIPTIONS[item.name] || item.category}</span>
+        <div class="qty-control">${qtyControlHTML(item.item_id, qty)}</div>
       </div>
     </div>`;
   }).join("");
+
+  grid.innerHTML = `
+    <div class="menu-cat-heading">${cat} <span class="menu-cat-count">${items.length} items</span></div>
+    ${rows}`;
 }
 
 function changeQty(itemId, delta, evt) {
@@ -355,12 +414,8 @@ function changeQty(itemId, delta, evt) {
   const mi = document.getElementById(`mi-${itemId}`);
   if (mi) {
     const qty = cart[itemId]?.qty || 0;
-    mi.querySelector(".qty-control").innerHTML = `
-      ${qty > 0
-        ? `<button class="qty-btn" onclick="changeQty('${itemId}',-1,event)">−</button>
-           <span class="qty-count">${qty}</span>`
-        : ''}
-      <button class="qty-btn" onclick="changeQty('${itemId}',1,event)">+</button>`;
+    mi.classList.toggle("in-cart", qty > 0);
+    mi.querySelector(".qty-control").innerHTML = qtyControlHTML(itemId, qty);
   }
 }
 
@@ -593,25 +648,36 @@ async function placeOrder() {
 // ═══════════════════════════════════════════
 // Confirmation + confetti + tracker
 // ═══════════════════════════════════════════
+// New order just placed → animate in + confetti
 function showConfirmation(data) {
   closeCartPanel();
-  transitionTo("screen-order", "screen-confirm", () => {
-    document.getElementById("heroSection").classList.add("hero-compact");
-    document.getElementById("cartTrigger").classList.add("hidden");
+  transitionTo("screen-order", "screen-confirm", () => fillConfirm(data, { confetti: true, isNew: true }));
+}
 
-    document.getElementById("confirmDetails").innerHTML = `
-      <div class="confirm-row"><span class="label">Name</span><span class="value">${data.student_name}</span></div>
-      <div class="confirm-row"><span class="label">Items</span><span class="value">${[...new Set(data.items)].join(", ")}</span></div>
-      <div class="confirm-row"><span class="label">Pickup Slot</span><span class="value">${data.assigned_slot}</span></div>
-      <div class="confirm-row"><span class="label">Queue Position</span><span class="value">#${data.queue_position}</span></div>
-      <div class="confirm-row"><span class="label">Est. Ready In</span><span class="value">~${data.estimated_mins} min</span></div>
-    `;
+// Shared: fill the confirm/tracker screen for either a new or a resumed order
+function fillConfirm(data, { confetti = false, isNew = false } = {}) {
+  currentOrderId = data.order_id;
+  document.getElementById("heroSection").classList.add("hero-compact");
+  document.getElementById("cartTrigger").classList.add("hidden");
 
-    launchConfetti();
-    updateTracker("Pending");
-    if (trackerInterval) clearInterval(trackerInterval);
-    trackerInterval = setInterval(pollOrderStatus, 8000);
-  });
+  document.getElementById("confirmTitle").textContent =
+    isNew ? "Order Confirmed!" : "Welcome back — your order is on the way";
+  document.getElementById("confirmSubtitle").textContent =
+    isNew ? "Your order has been received. Watch it come to life below."
+          : "Here's the live status of the order you placed earlier.";
+
+  document.getElementById("confirmDetails").innerHTML = `
+    <div class="confirm-row"><span class="label">Name</span><span class="value">${data.student_name}</span></div>
+    <div class="confirm-row"><span class="label">Items</span><span class="value">${[...new Set(data.items)].join(", ")}</span></div>
+    <div class="confirm-row"><span class="label">Pickup Slot</span><span class="value">${data.assigned_slot}</span></div>
+    <div class="confirm-row"><span class="label">Queue Position</span><span class="value">#${data.queue_position}</span></div>
+    <div class="confirm-row"><span class="label">Est. Ready In</span><span class="value">~${data.estimated_mins} min</span></div>
+  `;
+
+  if (confetti) launchConfetti();
+  updateTracker(data.status || "Pending");
+  if (trackerInterval) clearInterval(trackerInterval);
+  trackerInterval = setInterval(pollOrderStatus, 8000);
 }
 
 function launchConfetti() {

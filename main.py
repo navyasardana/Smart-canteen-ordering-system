@@ -68,7 +68,9 @@ def place_order(order: OrderRequest):
     if not slot:
         raise HTTPException(status_code=409, detail="No slots available right now. Please try later.")
 
-    queue_position = orders_col.count_documents({"slot_id": slot["slot_id"]}) + 1
+    # The atomic $inc in assign_slot_atomic already returned the post-increment
+    # booked count — that IS this order's collision-free position in the slot.
+    queue_position = slot["booked"]
     # Estimated ready time: wait_time minutes per order ahead in queue
     estimated_mins = slot.get("wait_time", 5) * queue_position
 
