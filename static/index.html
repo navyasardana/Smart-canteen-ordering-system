@@ -20,18 +20,30 @@
   <a href="/admin" class="nav-link">Admin →</a>
 </header>
 
+<!-- ── Hero ── -->
+<section class="hero" id="heroSection">
+  <div class="hero-deco hero-deco-left"></div>
+  <div class="hero-deco hero-deco-right"></div>
+  <div class="hero-content">
+    <div class="hero-badge">☕ NSUT Block 3</div>
+    <h1 class="hero-title">Nescafe NSUT</h1>
+    <p class="hero-tagline"><span id="typewriterText"></span><span class="type-caret"></span></p>
+  </div>
+</section>
+
 <!-- ════════════════════════════════════════════════════
      SCREEN 1 — Student ID gate
 ════════════════════════════════════════════════════ -->
 <div id="screen-gate" class="page">
-  <div class="card">
+  <div class="card gate-card">
     <div class="id-gate">
-      <div class="gate-icon">🎓</div>
-      <h2>Welcome to Nescafe NSUT</h2>
-      <p>Enter your student ID to start ordering. We'll show your recent orders too.</p>
+      <div class="gate-icon">☕</div>
+      <div class="gate-greeting" id="timeGreeting">Good morning</div>
+      <h2>Ready to order?</h2>
+      <p>Enter your student ID to skip the queue. We'll remember your favourites.</p>
       <div class="id-input-row">
-        <input id="gateInput" type="text" placeholder="e.g. 2024CS001" maxlength="20"/>
-        <button class="btn btn-primary" onclick="startSession()">Go →</button>
+        <input id="gateInput" type="text" placeholder="e.g. 2024CS001" maxlength="20" onkeydown="if(event.key==='Enter')startSession()"/>
+        <button class="btn btn-primary" onclick="startSession()">Continue →</button>
       </div>
       <p class="error-msg" id="gateError"></p>
     </div>
@@ -43,58 +55,50 @@
 ════════════════════════════════════════════════════ -->
 <div id="screen-order" class="page hidden">
 
-  <!-- Greeting -->
-  <div class="flex items-center justify-between mb-2" style="margin-bottom:1rem">
+  <div class="greeting-bar animate-in">
     <div>
-      <div style="font-size:0.78rem;color:var(--muted);">Ordering as</div>
-      <div style="font-weight:800;font-size:1.05rem;" id="greetingName">—</div>
+      <div class="greeting-label">Ordering as</div>
+      <div class="greeting-name" id="greetingName">—</div>
     </div>
     <button class="btn btn-ghost btn-sm" onclick="switchUser()">Change ID</button>
   </div>
 
-  <!-- Order Again -->
-  <div id="reorderSection" class="section hidden">
+  <div id="reorderSection" class="section hidden animate-in animate-in-delay-1">
     <div class="section-header">
-      <div class="section-title">⚡ Order Again</div>
+      <div class="section-title">Order Again</div>
     </div>
     <div class="reorder-list" id="reorderList"></div>
   </div>
 
-  <!-- Menu -->
-  <div class="section">
+  <div class="section animate-in animate-in-delay-2">
     <div class="section-header">
-      <div class="section-title">🍽️ Menu</div>
+      <div class="section-title">Menu</div>
     </div>
     <div class="tabs" id="categoryTabs"></div>
-    <div class="menu-grid" id="menuGrid" style="margin-top:0.8rem"></div>
+    <div class="menu-grid" id="menuGrid" style="margin-top:0.9rem"></div>
   </div>
 
-  <!-- Cart review + slot picker — shown when cart has items -->
   <div id="checkoutSection" class="section hidden">
-
-    <!-- Cart summary -->
-    <div class="card">
+    <div class="card animate-in">
       <div class="card-title">Your Cart</div>
       <div id="cartReview"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid var(--border)">
-        <span style="font-weight:800;font-size:1.1rem;" id="cartTotal">₹0</span>
+      <div class="cart-total-row">
+        <span class="cart-total-amount" id="cartTotal">₹0</span>
         <button class="btn btn-ghost btn-sm" onclick="clearCart()">Clear cart</button>
       </div>
     </div>
 
-    <!-- Name field -->
-    <div class="card">
+    <div class="card animate-in animate-in-delay-1">
       <div class="card-title">Your Name</div>
       <input id="studentName" type="text" placeholder="Full name (for pickup announcement)"/>
     </div>
 
-    <!-- Slot picker -->
-    <div class="card">
+    <div class="card animate-in animate-in-delay-2">
       <div class="card-title">Pick a Slot</div>
       <div class="slot-grid" id="slotPicker"></div>
     </div>
 
-    <button class="btn btn-primary btn-full" style="font-size:1rem;padding:0.9rem" onclick="placeOrder()">
+    <button class="btn btn-primary btn-full animate-in animate-in-delay-3" style="font-size:1rem;padding:0.95rem" onclick="placeOrder()">
       Place Order →
     </button>
     <p class="error-msg hidden" id="orderError"></p>
@@ -106,30 +110,39 @@
      SCREEN 3 — Confirmation + Live Tracker
 ════════════════════════════════════════════════════ -->
 <div id="screen-confirm" class="page hidden">
-  <div class="card">
+  <div class="card animate-in">
     <div class="confirm-screen">
-      <div class="confirm-icon">✅</div>
+      <div class="checkmark-wrap">
+        <div class="checkmark-circle">
+          <div class="checkmark-icon"></div>
+        </div>
+      </div>
       <h2>Order Confirmed!</h2>
       <p style="color:var(--muted);font-size:0.9rem">Your order has been received. Watch it come to life below.</p>
 
       <div class="confirm-details" id="confirmDetails"></div>
 
-      <!-- Progress tracker -->
       <div style="width:100%;max-width:400px;margin-top:1rem">
         <div class="card-title" style="text-align:left">Live Status</div>
         <div class="tracker" id="orderTracker">
           <div class="tracker-step" id="ts-pending">
-            <div class="tracker-dot">🕐</div>
+            <div class="tracker-dot">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
             <div class="tracker-label">Pending</div>
           </div>
           <div class="tracker-line" id="tl-1"></div>
           <div class="tracker-step" id="ts-preparing">
-            <div class="tracker-dot">👨‍🍳</div>
+            <div class="tracker-dot">
+              <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+            </div>
             <div class="tracker-label">Being Prepared</div>
           </div>
           <div class="tracker-line" id="tl-2"></div>
           <div class="tracker-step" id="ts-ready">
-            <div class="tracker-dot">🛎️</div>
+            <div class="tracker-dot">
+              <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
             <div class="tracker-label">Ready for Pickup</div>
           </div>
         </div>
@@ -140,14 +153,33 @@
   </div>
 </div>
 
-<!-- ── Floating cart bar ── -->
-<div class="cart-bar hidden" id="cartBar">
-  <div class="cart-bar-left">
-    <div class="cart-items-preview" id="cartBarPreview">—</div>
-    <div class="cart-total" id="cartBarTotal">₹0</div>
-  </div>
-  <button class="btn btn-primary" onclick="scrollToCheckout()">View Cart →</button>
+<!-- ── Cart trigger + panel ── -->
+<div class="cart-trigger hidden" id="cartTrigger" onclick="openCartPanel()">
+  <span class="cart-trigger-icon">🛒</span>
+  <span class="cart-trigger-badge" id="cartTriggerBadge">0</span>
+  <span class="cart-trigger-total" id="cartTriggerTotal">₹0</span>
 </div>
+
+<div class="cart-panel-backdrop" id="cartBackdrop" onclick="closeCartPanel()"></div>
+<aside class="cart-panel" id="cartPanel">
+  <div class="cart-panel-header">
+    <div>
+      <div class="cart-panel-title">Your Cart</div>
+      <div class="cart-panel-count" id="cartPanelCount">0 items</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="closeCartPanel()">✕</button>
+  </div>
+  <div class="cart-panel-body" id="cartPanelBody"></div>
+  <div class="cart-panel-footer">
+    <div class="cart-panel-total-row">
+      <span class="cart-panel-total-label">Total</span>
+      <span class="cart-panel-total" id="cartPanelTotal">₹0</span>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="closeCartPanel();scrollToCheckout()">Checkout →</button>
+  </div>
+</aside>
+
+<canvas id="confettiCanvas"></canvas>
 
 <script>
 // ═══════════════════════════════════════════
@@ -155,13 +187,68 @@
 // ═══════════════════════════════════════════
 let studentId   = "";
 let studentName = "";
-let menu        = [];       // all menu items from API
-let cart        = {};       // { item_id: { item, qty } }
+let menu        = [];
+let cart        = {};
 let selectedSlotId = null;
+let recommendedSlotId = null;
 let trackerInterval = null;
 let currentOrderId  = null;
 
 const CATEGORIES = ["Maggi","Pasta","Sandwiches","Hot Drinks","Ice Teas","Bakery"];
+const TAGLINE = "Skip the queue, not the coffee";
+
+// ═══════════════════════════════════════════
+// Init — typewriter + time greeting
+// ═══════════════════════════════════════════
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeGreeting();
+  typewriter(TAGLINE, document.getElementById("typewriterText"), 55);
+});
+
+function setTimeGreeting() {
+  const h = new Date().getHours();
+  let greet = "Good evening";
+  if (h < 12) greet = "Good morning";
+  else if (h < 17) greet = "Good afternoon";
+  document.getElementById("timeGreeting").innerHTML = `${greet}, <span>student</span>`;
+}
+
+function typewriter(text, el, speed) {
+  let i = 0;
+  el.textContent = "";
+  function tick() {
+    if (i <= text.length) {
+      el.textContent = text.slice(0, i);
+      i++;
+      setTimeout(tick, speed);
+    }
+  }
+  setTimeout(tick, 600);
+}
+
+// ═══════════════════════════════════════════
+// Page transitions
+// ═══════════════════════════════════════════
+function transitionTo(hideId, showId, cb) {
+  const from = document.getElementById(hideId);
+  const to   = document.getElementById(showId);
+  if (from && !from.classList.contains("hidden")) {
+    from.classList.add("page-exit");
+    setTimeout(() => {
+      from.classList.add("hidden");
+      from.classList.remove("page-exit");
+      to.classList.remove("hidden");
+      to.style.animation = "none";
+      to.offsetHeight;
+      to.style.animation = "";
+      if (cb) cb();
+    }, 250);
+  } else {
+    if (from) from.classList.add("hidden");
+    to.classList.remove("hidden");
+    if (cb) cb();
+  }
+}
 
 // ═══════════════════════════════════════════
 // Gate
@@ -173,24 +260,37 @@ function startSession() {
     return;
   }
   studentId = val;
-  show("screen-order");
-  hide("screen-gate");
-  document.getElementById("greetingName").textContent = studentId;
-  loadMenu();
-  loadHistory();
-  loadSlotPicker();
+  transitionTo("screen-gate", "screen-order", () => {
+    document.getElementById("greetingName").textContent = studentId;
+    document.getElementById("heroSection").classList.add("hero-compact");
+    loadMenu();
+    loadHistory();
+    loadSlotPicker();
+  });
 }
 
 function switchUser() {
   studentId = ""; cart = {}; selectedSlotId = null;
-  hide("screen-order"); hide("screen-confirm");
-  show("screen-gate");
-  document.getElementById("gateInput").value = "";
+  closeCartPanel();
+  transitionTo("screen-order", "screen-gate", () => {
+    document.getElementById("gateInput").value = "";
+    document.getElementById("heroSection").classList.remove("hero-compact");
+    refreshCartUI();
+    typewriter(TAGLINE, document.getElementById("typewriterText"), 45);
+  });
+  hide("screen-confirm");
 }
 
 // ═══════════════════════════════════════════
 // Menu
 // ═══════════════════════════════════════════
+function catClass(cat) {
+  return {
+    Maggi: "cat-maggi", Pasta: "cat-pasta", Sandwiches: "cat-sandwiches",
+    "Hot Drinks": "cat-hot-drinks", "Ice Teas": "cat-ice-teas", Bakery: "cat-bakery"
+  }[cat] || "";
+}
+
 async function loadMenu() {
   const res  = await fetch("/menu");
   const data = await res.json();
@@ -216,57 +316,90 @@ function renderMenuCategory(cat) {
   const items = menu.filter(i => i.category === cat);
   const grid  = document.getElementById("menuGrid");
   if (!items.length) { grid.innerHTML = `<p style="color:var(--muted);font-size:0.9rem">No items available right now.</p>`; return; }
-  grid.innerHTML = items.map(item => {
+  grid.innerHTML = items.map((item, idx) => {
     const qty = cart[item.item_id]?.qty || 0;
     return `
-    <div class="menu-item" id="mi-${item.item_id}">
-      <div class="menu-item-name">${item.name}</div>
-      <div class="menu-item-cat">${item.category}</div>
-      <div class="menu-item-footer">
-        <div class="menu-item-price">₹${item.price}</div>
-        <div class="qty-control">
-          ${qty > 0
-            ? `<button class="qty-btn" onclick="changeQty('${item.item_id}',-1)">−</button>
-               <span class="qty-count">${qty}</span>`
-            : ''}
-          <button class="qty-btn" onclick="changeQty('${item.item_id}',1)">+</button>
+    <div class="menu-item" id="mi-${item.item_id}" style="animation-delay:${idx * 0.05}s">
+      <div class="menu-item-visual ${catClass(item.category)}"><span>${catIcon(item.category)}</span></div>
+      <div class="menu-item-body">
+        <div class="menu-item-name">${item.name}</div>
+        <div class="menu-item-cat">${item.category}</div>
+        <div class="menu-item-footer">
+          <div class="menu-item-price">₹${item.price}</div>
+          <div class="qty-control">
+            ${qty > 0
+              ? `<button class="qty-btn" onclick="changeQty('${item.item_id}',-1,event)">−</button>
+                 <span class="qty-count">${qty}</span>`
+              : ''}
+            <button class="qty-btn" onclick="changeQty('${item.item_id}',1,event)">+</button>
+          </div>
         </div>
       </div>
     </div>`;
   }).join("");
 }
 
-function changeQty(itemId, delta) {
+function changeQty(itemId, delta, evt) {
   const item = menu.find(i => i.item_id === itemId);
   if (!item) return;
   const current = cart[itemId]?.qty || 0;
   const next = current + delta;
+
+  if (delta > 0 && evt) flyToCart(evt, item.category);
+
   if (next <= 0) delete cart[itemId];
   else cart[itemId] = { item, qty: next };
+
   refreshCartUI();
-  // re-render just the qty control for this item
+
   const mi = document.getElementById(`mi-${itemId}`);
   if (mi) {
     const qty = cart[itemId]?.qty || 0;
     mi.querySelector(".qty-control").innerHTML = `
       ${qty > 0
-        ? `<button class="qty-btn" onclick="changeQty('${itemId}',-1)">−</button>
+        ? `<button class="qty-btn" onclick="changeQty('${itemId}',-1,event)">−</button>
            <span class="qty-count">${qty}</span>`
         : ''}
-      <button class="qty-btn" onclick="changeQty('${itemId}',1)">+</button>`;
+      <button class="qty-btn" onclick="changeQty('${itemId}',1,event)">+</button>`;
   }
 }
 
+function flyToCart(evt, category) {
+  const btn = evt?.target?.closest(".qty-btn") || evt?.target;
+  const card = btn?.closest(".menu-item");
+  if (!card) return;
+
+  const rect = card.getBoundingClientRect();
+  const trigger = document.getElementById("cartTrigger");
+  const tr = trigger.getBoundingClientRect();
+
+  const fly = document.createElement("div");
+  fly.className = "fly-item";
+  fly.textContent = catIcon(category);
+  fly.style.left = (rect.left + rect.width / 2 - 12) + "px";
+  fly.style.top  = (rect.top + 40) + "px";
+
+  const dx = tr.left - rect.left + 20;
+  const dy = tr.top - rect.top;
+  fly.style.setProperty("--fly-x", dx + "px");
+  fly.style.setProperty("--fly-y", dy + "px");
+
+  document.body.appendChild(fly);
+  setTimeout(() => fly.remove(), 700);
+}
+
+// ═══════════════════════════════════════════
+// Cart UI
+// ═══════════════════════════════════════════
 function refreshCartUI() {
   const keys = Object.keys(cart);
   const total = keys.reduce((s, k) => s + cart[k].item.price * cart[k].qty, 0);
   const totalQty = keys.reduce((s, k) => s + cart[k].qty, 0);
 
-  // Checkout section
   if (keys.length > 0) {
     show("checkoutSection");
-    document.getElementById("cartReview").innerHTML = keys.map(k => `
-      <div style="display:flex;justify-content:space-between;padding:0.35rem 0;font-size:0.88rem;border-bottom:1px solid var(--border)">
+    document.getElementById("cartReview").innerHTML = keys.map((k, i) => `
+      <div class="cart-line" style="animation-delay:${i * 0.05}s">
         <span>${cart[k].item.name} × ${cart[k].qty}</span>
         <span style="font-weight:700">₹${cart[k].item.price * cart[k].qty}</span>
       </div>`).join("");
@@ -275,21 +408,51 @@ function refreshCartUI() {
     hide("checkoutSection");
   }
 
-  // Floating bar
-  const bar = document.getElementById("cartBar");
+  const trigger = document.getElementById("cartTrigger");
   if (keys.length > 0) {
-    bar.classList.remove("hidden");
-    document.getElementById("cartBarPreview").textContent = `${totalQty} item${totalQty>1?'s':''}`;
-    document.getElementById("cartBarTotal").textContent   = `₹${total}`;
+    trigger.classList.remove("hidden");
+    document.getElementById("cartTriggerBadge").textContent = totalQty;
+    document.getElementById("cartTriggerTotal").textContent = `₹${total}`;
+    document.getElementById("cartPanelCount").textContent = `${totalQty} item${totalQty > 1 ? "s" : ""}`;
+    document.getElementById("cartPanelTotal").textContent = `₹${total}`;
+    renderCartPanel();
   } else {
-    bar.classList.add("hidden");
+    trigger.classList.add("hidden");
+    closeCartPanel();
+    document.getElementById("cartPanelBody").innerHTML = "";
   }
+}
+
+function renderCartPanel() {
+  const keys = Object.keys(cart);
+  document.getElementById("cartPanelBody").innerHTML = keys.map((k, i) => `
+    <div class="cart-panel-item" style="animation-delay:${i * 0.06}s">
+      <div class="cpi-info">
+        <div class="cpi-name">${cart[k].item.name}</div>
+        <div class="cpi-price">₹${cart[k].item.price} each</div>
+      </div>
+      <div class="cpi-qty">
+        <button class="qty-btn" onclick="changeQty('${k}',-1,event)">−</button>
+        <span class="qty-count">${cart[k].qty}</span>
+        <button class="qty-btn" onclick="changeQty('${k}',1,event)">+</button>
+      </div>
+    </div>`).join("");
+}
+
+function openCartPanel() {
+  document.getElementById("cartPanel").classList.add("open");
+  document.getElementById("cartBackdrop").classList.add("open");
+  renderCartPanel();
+}
+
+function closeCartPanel() {
+  document.getElementById("cartPanel").classList.remove("open");
+  document.getElementById("cartBackdrop").classList.remove("open");
 }
 
 function clearCart() {
   cart = {};
   refreshCartUI();
-  // re-render current tab
   const activeTab = document.querySelector(".tab.active");
   if (activeTab) renderMenuCategory(activeTab.textContent.replace(/^.\s/, "").trim());
 }
@@ -306,8 +469,7 @@ async function loadHistory() {
   const data = await res.json();
   if (!data.history.length) return;
   show("reorderSection");
-  const list = document.getElementById("reorderList");
-  list.innerHTML = data.history.map(o => `
+  document.getElementById("reorderList").innerHTML = data.history.map(o => `
     <div class="reorder-card" onclick="reorder(${JSON.stringify(o.items).replace(/"/g,"'")})">
       <div class="rc-items">${o.items.join(", ")}</div>
       <div class="rc-meta">${o.assigned_slot} · ₹${o.quantity * 45}</div>
@@ -316,34 +478,62 @@ async function loadHistory() {
 }
 
 function reorder(items) {
-  // Fill cart from a past order (qty 1 each)
   items.forEach(name => {
     const found = menu.find(i => i.name === name);
     if (found) cart[found.item_id] = { item: found, qty: 1 };
   });
   refreshCartUI();
-  // Switch to first tab and re-render
   const firstTab = document.querySelector(".tab");
-  if (firstTab) { firstTab.click(); }
+  if (firstTab) firstTab.click();
   scrollToCheckout();
 }
 
 // ═══════════════════════════════════════════
 // Slot picker
 // ═══════════════════════════════════════════
+function slotStatusClass(pct) {
+  if (pct >= 80) return "slot-status-red";
+  if (pct >= 50) return "slot-status-yellow";
+  return "slot-status-green";
+}
+
+function slotStatusLabel(pct) {
+  if (pct >= 80) return "Almost full";
+  if (pct >= 50) return "Filling up";
+  return "Plenty of room";
+}
+
 async function loadSlotPicker() {
   const res  = await fetch("/slots/waittime");
   const data = await res.json();
+  const available = data.slots.filter(s => !s.closed && s.booked < s.capacity);
+
+  recommendedSlotId = available.length
+    ? available.reduce((best, s) =>
+        s.estimated_wait_mins < best.estimated_wait_mins ? s : best
+      ).slot_id
+    : null;
+
+  if (!selectedSlotId && recommendedSlotId) selectedSlotId = recommendedSlotId;
+
   const picker = document.getElementById("slotPicker");
   picker.innerHTML = data.slots.map(s => {
     const pct  = Math.round((s.booked / s.capacity) * 100);
     const full  = s.booked >= s.capacity;
-    const cls   = s.closed ? "slot-closed" : full ? "slot-full" : (selectedSlotId === s.slot_id ? "selected" : "");
-    const label = s.closed ? "Closed" : full ? "Full" : `${s.capacity - s.booked} left`;
+    const statusCls = slotStatusClass(pct);
+    const isRec = s.slot_id === recommendedSlotId && !s.closed && !full;
+    const cls   = [
+      statusCls,
+      s.closed ? "slot-closed" : full ? "slot-full" : "",
+      selectedSlotId === s.slot_id ? "selected" : "",
+      isRec ? "slot-recommended" : ""
+    ].filter(Boolean).join(" ");
+    const label = s.closed ? "Closed" : full ? "Full" : `${s.capacity - s.booked} spots left`;
     return `
     <div class="slot-option ${cls}" id="slot-opt-${s.slot_id}"
          onclick="selectSlot(${s.slot_id},${s.closed||full})">
       <div class="slot-time">${s.time}</div>
+      ${!s.closed && !full ? `<div class="slot-status-dot">${slotStatusLabel(pct)}</div>` : ""}
       <div class="slot-avail">${label}</div>
       ${!s.closed && !full ? `<div class="slot-wait">~${s.estimated_wait_mins} min wait</div>` : ""}
       <div class="slot-fill-bar"><div class="slot-fill-bar-inner" style="width:${pct}%"></div></div>
@@ -401,29 +591,69 @@ async function placeOrder() {
 }
 
 // ═══════════════════════════════════════════
-// Confirmation + tracker
+// Confirmation + confetti + tracker
 // ═══════════════════════════════════════════
 function showConfirmation(data) {
-  hide("screen-order");
-  hide("cartBar");
-  show("screen-confirm");
+  closeCartPanel();
+  transitionTo("screen-order", "screen-confirm", () => {
+    document.getElementById("heroSection").classList.add("hero-compact");
+    document.getElementById("cartTrigger").classList.add("hidden");
 
-  document.getElementById("confirmDetails").innerHTML = `
-    <div class="confirm-row"><span class="label">Name</span><span class="value">${data.student_name}</span></div>
-    <div class="confirm-row"><span class="label">Items</span><span class="value">${[...new Set(data.items)].join(", ")}</span></div>
-    <div class="confirm-row"><span class="label">Pickup Slot</span><span class="value">${data.assigned_slot}</span></div>
-    <div class="confirm-row"><span class="label">Queue Position</span><span class="value">#${data.queue_position}</span></div>
-    <div class="confirm-row"><span class="label">Est. Ready In</span><span class="value">~${data.estimated_mins} min</span></div>
-  `;
+    document.getElementById("confirmDetails").innerHTML = `
+      <div class="confirm-row"><span class="label">Name</span><span class="value">${data.student_name}</span></div>
+      <div class="confirm-row"><span class="label">Items</span><span class="value">${[...new Set(data.items)].join(", ")}</span></div>
+      <div class="confirm-row"><span class="label">Pickup Slot</span><span class="value">${data.assigned_slot}</span></div>
+      <div class="confirm-row"><span class="label">Queue Position</span><span class="value">#${data.queue_position}</span></div>
+      <div class="confirm-row"><span class="label">Est. Ready In</span><span class="value">~${data.estimated_mins} min</span></div>
+    `;
 
-  updateTracker("Pending");
-  if (trackerInterval) clearInterval(trackerInterval);
-  trackerInterval = setInterval(pollOrderStatus, 8000);
+    launchConfetti();
+    updateTracker("Pending");
+    if (trackerInterval) clearInterval(trackerInterval);
+    trackerInterval = setInterval(pollOrderStatus, 8000);
+  });
+}
+
+function launchConfetti() {
+  const canvas = document.getElementById("confettiCanvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const colors = ["#c0392b","#6f4e37","#2d8a56","#c9920a","#d4a574","#4a3224"];
+  const pieces = Array.from({ length: 120 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height * -0.5,
+    w: 6 + Math.random() * 6,
+    h: 4 + Math.random() * 4,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    vx: (Math.random() - 0.5) * 4,
+    vy: 2 + Math.random() * 4,
+    rot: Math.random() * 360,
+    vr: (Math.random() - 0.5) * 8,
+  }));
+
+  let frame = 0;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.rot += p.vr;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+    frame++;
+    if (frame < 100) requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  draw();
 }
 
 async function pollOrderStatus() {
   if (!currentOrderId) return;
-  // We poll /orders and find our order — or a dedicated endpoint could be used
   const res  = await fetch(`/orders`);
   const data = await res.json();
   const order = data.orders.find(o => o.order_id === currentOrderId);
@@ -435,16 +665,12 @@ const STATUS_ORDER = ["Pending", "Being Prepared", "Ready for Pickup", "Collecte
 
 function updateTracker(status) {
   const idx = STATUS_ORDER.indexOf(status);
-
   const steps = [
     { id: "ts-pending",    threshold: 0 },
     { id: "ts-preparing",  threshold: 1 },
     { id: "ts-ready",      threshold: 2 },
   ];
-  const lines = [
-    { id: "tl-1", threshold: 1 },
-    { id: "tl-2", threshold: 2 },
-  ];
+  const lines = [{ id: "tl-1", threshold: 1 }, { id: "tl-2", threshold: 2 }];
 
   steps.forEach(s => {
     const el = document.getElementById(s.id);
@@ -454,19 +680,17 @@ function updateTracker(status) {
     else if (idx === s.threshold) el.classList.add("active");
   });
   lines.forEach(l => {
-    const el = document.getElementById(l.id);
-    if (!el) return;
-    el.classList.toggle("done", idx >= l.threshold);
+    document.getElementById(l.id)?.classList.toggle("done", idx >= l.threshold);
   });
 }
 
 function newOrder() {
   cart = {}; selectedSlotId = null; currentOrderId = null;
   if (trackerInterval) clearInterval(trackerInterval);
-  hide("screen-confirm");
-  show("screen-order");
-  loadSlotPicker();
-  refreshCartUI();
+  transitionTo("screen-confirm", "screen-order", () => {
+    loadSlotPicker();
+    refreshCartUI();
+  });
 }
 
 // ═══════════════════════════════════════════
@@ -480,8 +704,9 @@ function catIcon(cat) {
   return { Maggi:"🍜", Pasta:"🍝", Sandwiches:"🥪", "Hot Drinks":"☕", "Ice Teas":"🧊", Bakery:"🥐" }[cat] || "🍴";
 }
 
-// Refresh slot picker every 15 seconds on the order screen
-setInterval(() => { if (!document.getElementById("screen-order").classList.contains("hidden")) loadSlotPicker(); }, 15000);
+setInterval(() => {
+  if (!document.getElementById("screen-order").classList.contains("hidden")) loadSlotPicker();
+}, 15000);
 </script>
 
 </body>

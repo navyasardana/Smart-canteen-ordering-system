@@ -5,12 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>NSUT Nescafe — Admin</title>
   <link rel="stylesheet" href="/static/style.css"/>
-  <style>
-    body { background: #f1f3f6; }
-    .admin-page { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 4rem; display: flex; flex-direction: column; gap: 1.8rem; }
-  </style>
 </head>
-<body>
+<body class="admin-body">
 
 <!-- ── Admin Header ── -->
 <header class="admin-header">
@@ -21,7 +17,7 @@
       <div class="brand-sub">NSUT Nescafe Canteen</div>
     </div>
   </div>
-  <a href="/" class="nav-link" style="color:#9ca3af;border-color:#374151">← Student View</a>
+  <a href="/" class="nav-link">← Student View</a>
 </header>
 
 <div class="admin-page">
@@ -29,17 +25,52 @@
   <!-- ── 1. Overview Stats ── -->
   <section>
     <div class="stats-grid" id="statsGrid">
-      <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-label">Total Orders</div><div class="stat-value" id="stat-orders">—</div></div>
-      <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Est. Revenue</div><div class="stat-value" id="stat-revenue">—</div></div>
-      <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-label">Busiest Slot</div><div class="stat-value" id="stat-slot" style="font-size:1.2rem">—</div></div>
-      <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-label">Top Item</div><div class="stat-value" id="stat-item" style="font-size:1rem;margin-top:0.4rem">—</div></div>
+      <div class="stat-card stat-card-orders">
+        <div class="stat-card-header">
+          <div class="stat-label">Total Orders</div>
+          <div class="stat-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          </div>
+        </div>
+        <div class="stat-value" id="stat-orders">—</div>
+      </div>
+      <div class="stat-card stat-card-revenue">
+        <div class="stat-card-header">
+          <div class="stat-label">Est. Revenue</div>
+          <div class="stat-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+        </div>
+        <div class="stat-value" id="stat-revenue">—</div>
+      </div>
+      <div class="stat-card stat-card-slot">
+        <div class="stat-card-header">
+          <div class="stat-label">Busiest Slot</div>
+          <div class="stat-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+        </div>
+        <div class="stat-value stat-value-sm" id="stat-slot">—</div>
+      </div>
+      <div class="stat-card stat-card-item">
+        <div class="stat-card-header">
+          <div class="stat-label">Top Item</div>
+          <div class="stat-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+        </div>
+        <div class="stat-value stat-value-sm" id="stat-item">—</div>
+      </div>
     </div>
   </section>
 
   <!-- ── 2. Slot Management ── -->
   <section>
     <div class="section-header" style="margin-bottom:0.8rem">
-      <div class="section-title">🕐 Slot Management</div>
+      <div class="admin-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Slot Management
+      </div>
       <button class="btn btn-ghost btn-sm" onclick="loadSlots();loadSlotOrders()">↻ Refresh</button>
     </div>
     <div class="admin-slots-grid" id="adminSlotsGrid"></div>
@@ -48,7 +79,10 @@
   <!-- ── 3. Orders Table ── -->
   <section>
     <div class="section-header" style="margin-bottom:0.8rem">
-      <div class="section-title">📋 All Orders</div>
+      <div class="admin-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        All Orders
+      </div>
     </div>
     <div class="card">
       <div class="orders-filter-bar">
@@ -67,7 +101,7 @@
           <option value="Collected">Collected</option>
         </select>
       </div>
-      <div style="overflow-x:auto">
+      <div class="admin-table-wrap">
         <table>
           <thead>
             <tr>
@@ -86,9 +120,12 @@
   <!-- ── 4. Peak Hour Chart ── -->
   <section>
     <div class="section-header" style="margin-bottom:0.8rem">
-      <div class="section-title">📊 Orders by Slot</div>
+      <div class="admin-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Orders by Slot
+      </div>
     </div>
-    <div class="card">
+    <div class="card chart-card">
       <div class="bar-chart" id="barChart"></div>
     </div>
   </section>
@@ -96,7 +133,10 @@
   <!-- ── 5. Menu Management ── -->
   <section>
     <div class="section-header" style="margin-bottom:0.8rem">
-      <div class="section-title">🍽️ Menu Availability</div>
+      <div class="admin-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+        Menu Availability
+      </div>
       <span style="font-size:0.78rem;color:var(--muted)">Toggle to show/hide from student menu</span>
     </div>
     <div class="card">
@@ -149,14 +189,17 @@ function renderBarChart(perSlot) {
   const chart  = document.getElementById("barChart");
   const max    = Math.max(...perSlot.map(s => s.count), 1);
   const allSlotTimes = ["10:45","11:00","11:15","11:30"];
+  const maxBarHeight = 120;
 
   chart.innerHTML = allSlotTimes.map(time => {
     const s   = perSlot.find(x => x.slot === time) || { count: 0 };
-    const pct = Math.round((s.count / max) * 80);
+    const height = Math.max(Math.round((s.count / max) * maxBarHeight), s.count > 0 ? 12 : 6);
     return `
     <div class="bar-col">
-      <div class="bar-count">${s.count}</div>
-      <div class="bar-fill" style="height:${pct}px"></div>
+      <div class="bar-fill-wrap">
+        <div class="bar-count">${s.count}</div>
+        <div class="bar-fill" style="height:${height}px"></div>
+      </div>
       <div class="bar-label">${time}</div>
     </div>`;
   }).join("");
@@ -198,25 +241,35 @@ async function loadSlotOrders() {
               : ""}
           </div>
         </div>`).join("")
-      : `<p style="color:var(--muted);font-size:0.82rem;padding:0.5rem 0">No orders yet.</p>`;
+      : `<p style="color:var(--muted);font-size:0.82rem;padding:0.5rem 0.6rem">No orders yet.</p>`;
 
     const waitRes  = await fetch("/slots/waittime");
     const waitData = await waitRes.json();
     const slotWait = waitData.slots.find(s => s.slot_id === slot.slot_id);
+    const pct = Math.round((slot.booked / slot.capacity) * 100);
 
     grid.innerHTML += `
     <div class="admin-slot-card ${slot.closed?'closed':''}" id="asc-${slot.slot_id}">
       <div class="slot-card-head">
-        <div>
-          <div class="slot-name">${slot.time}</div>
-          <div class="slot-count">${slot.booked}/${slot.capacity} booked · ~${slotWait?.estimated_wait_mins||5} min wait</div>
+        <div class="slot-card-head-left">
+          <div class="slot-time-badge">
+            <span class="stb-hour">${slot.time}</span>
+            <span class="stb-label">Slot</span>
+          </div>
+          <div>
+            <div class="slot-name">${slot.time} Pickup</div>
+            <div class="slot-count">${slot.booked}/${slot.capacity} booked · ~${slotWait?.estimated_wait_mins||5} min wait</div>
+            <div class="slot-capacity-bar">
+              <div class="slot-capacity-bar-inner" style="width:${pct}%"></div>
+            </div>
+          </div>
         </div>
         <span class="badge ${slot.closed?'badge-pending':'badge-ready'}">${slot.closed?"Closed":"Open"}</span>
       </div>
       <div class="slot-card-orders">${orderRows}</div>
       <div class="slot-card-footer">
         <label>Wait (min):</label>
-        <input type="number" id="wt-${slot.slot_id}" value="${slot.wait_time||5}" min="1" max="60" style="width:56px"/>
+        <input type="number" id="wt-${slot.slot_id}" value="${slot.wait_time||5}" min="1" max="60"/>
         <button class="btn btn-ghost btn-sm" onclick="saveWaitTime(${slot.slot_id})">Save</button>
         <button class="btn btn-sm ${slot.closed?'btn-green':'btn-amber'}" style="margin-left:auto"
           onclick="toggleSlot(${slot.slot_id},${!slot.closed})">
@@ -359,7 +412,6 @@ function renderMenuMgmt(cat) {
 async function toggleMenuItem(itemId) {
   const res  = await fetch(`/menu/${itemId}`, { method: "PATCH" });
   const data = await res.json();
-  // Update local state
   const idx = fullMenu.findIndex(i => i.item_id === itemId);
   if (idx !== -1) fullMenu[idx].available = data.available;
   const el = document.getElementById(`mmi-${itemId}`);
