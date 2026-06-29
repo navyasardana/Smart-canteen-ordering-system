@@ -1,156 +1,160 @@
-# Smart Canteen Pre-Ordering System
+# 🍽️ Smart Canteen Pre-Ordering System
 
-A production-ready backend + frontend for a college canteen pre-ordering system. Students pick up food at an assigned time slot. The system uses a greedy scheduling algorithm and atomic MongoDB operations to fairly assign slots without race conditions.
+A full-stack pre-ordering system for **NSUT's Nescafe canteen**. Students browse the menu, build a cart, and pick a pickup time slot — the backend assigns them to a slot using a greedy scheduling algorithm and tracks their order live from *Pending → Being Prepared → Ready for Pickup*. A separate admin dashboard lets staff manage slots, update order status, toggle menu availability, and view live analytics.
 
 ---
 
-## System Architecture
+## 📸 Screenshots
+
+> _Replace the placeholders below with actual screenshots._
+
+| Screen | Preview |
+|---|---|
+| **Student — Menu & Cart** | `<!-- screenshot: student menu page -->` |
+| **Student — Live Order Tracker** | `<!-- screenshot: order confirmation + tracker -->` |
+| **Admin — Dashboard & Orders** | `<!-- screenshot: admin dashboard -->` |
+| **Admin — Slot Management** | `<!-- screenshot: slot management cards -->` |
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Backend** | FastAPI (Python) |
+| **Database** | MongoDB Atlas |
+| **Language** | Python 3.11 |
+| **Server** | Uvicorn (ASGI) |
+| **Scheduling** | APScheduler (daily slot reset) |
+| **Frontend** | Vanilla HTML / CSS / JS |
+| **Containerization** | Docker |
+
+---
+
+## ⚙️ How the Greedy Algorithm Works (simply)
+
+The canteen has a handful of pickup slots, each with a limited number of spots (capacity).
+
+When a student places an order, the system:
+
+1. Looks at the slots **in time order — earliest first**.
+2. Picks the **first slot that still has a free spot** (and isn't closed).
+3. If the student requested a specific slot, that one is tried first.
+
+That's the "greedy" part: it doesn't try every possible combination — it just grabs the earliest available option right now. It's simple, fast, and gives students the soonest possible pickup time.
 
 ```
-Browser (HTML/CSS/JS)
-        │
-        ▼
-FastAPI (main.py)           ← REST API + static file serving
-    ├── models.py            ← Pydantic request validation
-    ├── database.py          ← MongoDB connection + slot helpers
-    └── scheduler.py         ← APScheduler midnight reset job
-        │
-        ▼
-MongoDB Atlas
-    ├── canteen.slots        ← 4 slots, capacity + booked count
-    └── canteen.orders       ← all student orders
+Slots:  10:45 [FULL]   11:00 [3/5]   11:15 [0/5]   11:30 [0/5]
+                          ↑
+         New order → assigned to 11:00 (earliest slot with room)
 ```
 
-**Request flow for POST /order:**
-1. Pydantic validates the request body (student ID alphanumeric, quantity ≤ 10, items not empty)
-2. `assign_slot_atomic()` runs the greedy algorithm with an atomic MongoDB operation
-3. Order is saved to MongoDB with status `Pending` and a queue position
-4. Response returns the assigned slot and queue position
-
 ---
 
-## Greedy Interval Scheduling Algorithm
+## 🔒 How the Race Condition Is Handled
 
-The system has 4 pickup slots (10:45, 11:00, 11:15, 11:30), each with a capacity of 5 orders.
+**The problem:** Two students could order at the *exact same time*. If the code did "read the count → check if full → then add one," both requests might read "4 booked, 1 spot left" and both get added — pushing the slot to 6 in a 5-capacity slot (overbooking).
 
-**The algorithm:**
-1. Fetch all slots sorted by `slot_id` (chronological order — earliest first)
-2. Iterate through each slot
-3. Assign the **first slot** where `booked < capacity`
-4. Increment that slot's `booked` count
-
-This is greedy because it always takes the locally optimal choice (earliest available slot) without looking ahead. It's O(n) on the number of slots — fine for a small fixed set.
-
----
-
-## The Race Condition & How It's Fixed
-
-**The problem:** Without atomic operations, two simultaneous requests could both read a slot as `booked: 4` (one below capacity), both decide it's available, and both increment — resulting in `booked: 6` on a capacity-5 slot.
-
-**The fix — `findOneAndUpdate` with a conditional filter:**
+**The fix — one atomic database operation.** Instead of reading and writing separately, we use MongoDB's `findOneAndUpdate` with a condition baked into the query:
 
 ```python
 slots_col.find_one_and_update(
-    {"slot_id": slot["slot_id"], "booked": {"$lt": slot["capacity"]}},
-    {"$inc": {"booked": 1}},
+    {"slot_id": slot_id, "booked": {"$lt": capacity}},  # only if a spot is free
+    {"$inc": {"booked": 1}},                            # claim it
     return_document=True,
 )
 ```
 
-MongoDB executes the **find + update as a single atomic operation** at the database level. The filter `"booked": {"$lt": capacity}` means the update only succeeds if the slot still has room *at the exact moment of the write*. If two requests race, only one wins — the other gets `None` back and tries the next slot.
+MongoDB guarantees this find-and-increment happens as a **single, indivisible step**. If two orders race for the last spot, only one succeeds — the other gets `None` back and automatically moves on to the next available slot. No overbooking, no locks needed.
 
-No locks, no transactions needed. This is the correct way to handle this in MongoDB.
-
----
-
-## Tech Stack
-
-| Layer | Tool |
-|---|---|
-| Framework | FastAPI |
-| Server | Uvicorn |
-| Database | MongoDB Atlas (PyMongo) |
-| Scheduling | APScheduler |
-| Validation | Pydantic v2 |
-| Frontend | Vanilla HTML / CSS / JS |
-| Config | python-dotenv |
+The same atomic `booked` value is also used as the student's **queue position**, so positions can never collide either.
 
 ---
 
-## Project Structure
+## 🚀 Run Locally
 
-```
-smart-canteen-ordering-system/
-├── main.py          # FastAPI app, all endpoints
-├── database.py      # MongoDB connection, slot init + reset
-├── models.py        # Pydantic request/response models
-├── scheduler.py     # APScheduler daily midnight reset
-├── static/
-│   ├── index.html   # Student order page
-│   ├── admin.html   # Admin dashboard
-│   └── style.css    # Shared styles
-├── .env             # MONGO_URL (not committed)
-├── .gitignore
-└── README.md
-```
-
----
-
-## API Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/order` | Place an order; returns slot + queue position |
-| `GET` | `/orders` | All orders |
-| `GET` | `/orders/{slot_id}` | Orders for a specific slot |
-| `PATCH` | `/order/{order_id}/status` | Update status: Pending → Ready → Collected |
-| `GET` | `/queue/{slot_id}` | Ordered queue for a slot |
-| `GET` | `/slots` | Current slot availability |
-
-### POST /order — request body
-```json
-{
-  "student_name": "Navya",
-  "student_id": "S001",
-  "items": ["sandwich", "juice"],
-  "quantity": 2
-}
-```
-
-**Validation rules:**
-- `student_id` — alphanumeric only
-- `quantity` — between 1 and 10
-- `items` — cannot be empty
-
----
-
-## Local Setup
+**Prerequisites:** Python 3.11+, a MongoDB Atlas connection string.
 
 ```bash
-# 1. Clone the repo
-git clone <repo-url>
+# 1. Clone and enter the project
+git clone <your-repo-url>
 cd smart-canteen-ordering-system
 
-# 2. Create and activate virtual environment
+# 2. Create and activate a virtual environment
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate          # Windows: venv\Scripts\activate
 
 # 3. Install dependencies
-pip install fastapi uvicorn pymongo python-dotenv apscheduler certifi
+pip install -r requirements.txt
 
-# 4. Set your MongoDB connection string
-echo "MONGO_URL=mongodb+srv://<user>:<pass>@cluster0.xxxxx.mongodb.net/?appName=Cluster0" > .env
+# 4. Add your MongoDB connection string to a .env file
+echo "MONGO_URL=your_mongodb_atlas_connection_string" > .env
 
 # 5. Start the server
 uvicorn main:app --reload
 ```
 
-- Student page: `http://127.0.0.1:8000`
-- Admin page:   `http://127.0.0.1:8000/admin`
-- API docs:     `http://127.0.0.1:8000/docs`
+Then open:
+
+- **Student app:** http://127.0.0.1:8000
+- **Admin dashboard:** http://127.0.0.1:8000/admin
+- **API docs (Swagger):** http://127.0.0.1:8000/docs
 
 ---
 
-## Daily Reset
+## 🐳 Run with Docker
 
-APScheduler runs a background job every day at midnight that resets all `booked` counts to 0. This means slots automatically clear for the next day without any manual intervention or server restart.
+**Prerequisites:** Docker installed, and a `.env` file containing your `MONGO_URL`.
+
+```bash
+# Build the image
+docker build -t smart-canteen .
+
+# Run the container (passes your .env into the container)
+docker run -p 8000:8000 --env-file .env smart-canteen
+```
+
+The app will be available at **http://127.0.0.1:8000**.
+
+> The `.env` file is intentionally excluded from the image via `.dockerignore`, so your database credentials are never baked into the build — they're injected at runtime with `--env-file`.
+
+---
+
+## 📡 API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/order` | Place an order; returns assigned slot + queue position |
+| `GET` | `/orders` | All orders |
+| `GET` | `/orders/{slot_id}` | Orders for a specific slot |
+| `PATCH` | `/order/{order_id}/status` | Update order status |
+| `GET` | `/queue/{slot_id}` | Queue for a slot |
+| `GET` | `/slots` | Current slot availability |
+| `GET` | `/slots/waittime` | Estimated wait time per slot |
+| `PATCH` | `/slot/{slot_id}` | Set slot wait time / open-close a slot |
+| `GET` | `/menu` | Full menu with availability |
+| `PATCH` | `/menu/{item_id}` | Toggle item availability |
+| `GET` | `/student/{student_id}/history` | A student's last 3 orders |
+| `GET` | `/admin/overview` | Dashboard analytics |
+
+---
+
+## 🗂️ Project Structure
+
+```
+smart-canteen-ordering-system/
+├── main.py            # FastAPI app + all endpoints
+├── database.py        # MongoDB connection, slot/menu setup, daily reset
+├── models.py          # Pydantic request models + validation
+├── scheduler.py       # APScheduler midnight reset job
+├── static/
+│   ├── index.html     # Student ordering app
+│   ├── admin.html     # Admin dashboard
+│   └── style.css      # Shared styles
+├── Dockerfile
+├── requirements.txt
+├── .dockerignore
+├── .gitignore
+├── .env               # MONGO_URL (not committed)
+└── README.md
+```
